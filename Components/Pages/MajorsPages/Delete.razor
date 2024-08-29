@@ -1,0 +1,73 @@
+﻿@page "/majors/delete"
+
+@using Microsoft.EntityFrameworkCore
+@using BlazorApp3.Models
+@inject IDbContextFactory<BlazorApp3.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+
+<PageTitle>Delete</PageTitle>
+
+<div class="container mt-4">
+    <h3 class="mb-4">Confirm Deletion</h3>
+    <hr />
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            @if (majors is null)
+            {
+                <p><em>Loading...</em></p>
+            }
+            else
+            {
+                <h4 class="mb-3">Major Details</h4>
+
+                <dl class="row">
+                    <dt class="col-sm-3">Name:</dt>
+                    <dd class="col-sm-9">@majors.Name</dd>
+                </dl>
+
+                <dl class="row">
+                    <dt class="col-sm-3">Department:</dt>
+                    <dd class="col-sm-9">@majors.Department.Name</dd>
+                </dl>
+
+                <div class="mt-4">
+                    <EditForm method="post" Model="majors" OnValidSubmit="DeleteMajors" FormName="delete" Enhance>
+                        <button type="submit" class="btn btn-danger w-100">Delete</button>
+                    </EditForm>
+                    <a href="/majors" class="btn btn-secondary w-100 mt-2">
+                        <i class="fa-solid fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+
+@code {
+    Majors? majors;
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        majors = await context.Majors.Include(m => m.Department).FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (majors is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    public async Task DeleteMajors()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Majors.Remove(majors!);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/majors");
+    }
+}

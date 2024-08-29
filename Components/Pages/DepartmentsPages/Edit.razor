@@ -1,0 +1,97 @@
+﻿@page "/departments/edit"
+
+@using Microsoft.EntityFrameworkCore
+@using BlazorApp3.Models
+@inject IDbContextFactory<BlazorApp3.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Edit</PageTitle>
+
+
+<h4 class="my-4">Edit Department</h4>
+<hr />
+
+@if (Departments is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <EditForm method="post" Model="Departments" OnValidSubmit="UpdateDepartments" FormName="edit" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger" />
+                <input type="hidden" name="Departments.Id" value="@Departments.Id" />
+
+                <div class="mb-3">
+                    <label for="name" class="form-label">Name:</label>
+                    <InputText id="name" @bind-Value="Departments.Name" class="form-control" />
+                    <ValidationMessage For="() => Departments.Name" class="text-danger" />
+                </div>
+
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-primary w-100">Save</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div class="mt-3">
+    <a href="/departments" class="btn btn-secondary">
+        <i class="fa-solid fa-arrow-left"></i> Back to List
+    </a>
+</div>
+
+
+@code {
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    [SupplyParameterFromForm]
+    public Departments? Departments { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Departments ??= await context.Departments.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (Departments is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    // To protect from overposting attacks, enable the specific properties you want to bind to.
+    // For more details, see https://aka.ms/RazorPagesCRUD.
+    public async Task UpdateDepartments()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Attach(Departments!).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!DepartmentsExists(Departments!.Id))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/departments");
+    }
+
+    bool DepartmentsExists(int id)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Departments.Any(e => e.Id == id);
+    }
+}

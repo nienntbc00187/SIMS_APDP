@@ -1,0 +1,65 @@
+﻿@page "/subjects/details"
+
+@using Microsoft.EntityFrameworkCore
+@using BlazorApp3.Models
+@inject IDbContextFactory<BlazorApp3.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Details</PageTitle>
+
+<h1 class="mb-4">Details</h1>
+
+<div class="container">
+    <h4 class="mb-4">Subjects</h4>
+    <hr />
+
+    @if (subjects is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-3">Name:</dt>
+                    <dd class="col-sm-9">@subjects.Name</dd>
+
+                    <dt class="col-sm-3">Major:</dt>
+                    <dd class="col-sm-9">@subjects.Major.Name</dd>
+
+                    <dt class="col-sm-3">Code:</dt>
+                    <dd class="col-sm-9">@subjects.Code</dd>
+                </dl>
+
+                <div class="mt-4">
+                    <a href="@($"/subjects/edit?id={subjects.Id}")" class="btn btn-primary me-2">
+                        <i class="fa-solid fa-pen-to-square"></i> Edit
+                    </a>
+                    <a href="@($"/subjects")" class="btn btn-secondary">
+                        <i class="fa-solid fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+
+@code {
+    Subjects? subjects;
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        subjects = await context.Subjects.Include(m => m.Major).FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (subjects is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+}

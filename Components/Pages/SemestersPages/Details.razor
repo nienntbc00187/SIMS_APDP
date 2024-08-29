@@ -1,0 +1,61 @@
+﻿@page "/semesters/details"
+
+@using Microsoft.EntityFrameworkCore
+@using BlazorApp3.Models
+@inject IDbContextFactory<BlazorApp3.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Details</PageTitle>
+
+<h1 class="mb-4">View Semester Details</h1>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <h4 class="card-title">Semesters</h4>
+        <hr />
+        @if (semesters is null)
+        {
+            <p><em>Loading...</em></p>
+        }
+        else
+        {
+            <dl class="row">
+                <dt class="col-sm-3">Name:</dt>
+                <dd class="col-sm-9">@semesters.Name</dd>
+
+                <dt class="col-sm-3">Start Date:</dt>
+                <dd class="col-sm-9">@semesters.StartDate.ToShortDateString()</dd>
+
+                <dt class="col-sm-3">End Date:</dt>
+                <dd class="col-sm-9">@semesters.EndDate.ToShortDateString()</dd>
+            </dl>
+            <div class="mt-4">
+                <a href="@($"/semesters/edit?id={semesters.Id}")" class="btn btn-warning me-2">
+                    <i class="fa-solid fa-pen-to-square"></i> Edit
+                </a>
+                <a href="@($"/semesters")" class="btn btn-secondary">
+                    <i class="fa-solid fa-arrow-left"></i> Back to List
+                </a>
+            </div>
+        }
+    </div>
+</div>
+
+
+@code {
+    Semesters? semesters;
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        semesters = await context.Semesters.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (semesters is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+}

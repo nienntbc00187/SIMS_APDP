@@ -1,0 +1,60 @@
+﻿@page "/majors/details"
+
+@using Microsoft.EntityFrameworkCore
+@using BlazorApp3.Models
+@inject IDbContextFactory<BlazorApp3.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Details</PageTitle>
+
+<div class="container mt-4">
+    <h4 class="mb-4">Major Details</h4>
+    <hr />
+
+    @if (majors is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <dl class="row mb-4">
+                    <dt class="col-sm-3">Name:</dt>
+                    <dd class="col-sm-9">@majors.Name</dd>
+
+                    <dt class="col-sm-3">Department Name:</dt>
+                    <dd class="col-sm-9">@majors.Department.Name</dd>
+                </dl>
+
+                <div class="d-flex justify-content-between">
+                    <a href="@($"/majors/edit?id={majors.Id}")" class="btn btn-warning">
+                        <i class="fa-solid fa-pen-to-square"></i> Edit
+                    </a>
+                    <a href="@($"/majors")" class="btn btn-secondary">
+                        <i class="fa-solid fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+
+@code {
+    Majors? majors;
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        majors = await context.Majors.Include(m=>m.Department).FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (majors is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+}

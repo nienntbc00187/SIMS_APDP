@@ -1,0 +1,111 @@
+﻿@page "/students/create"
+
+@using Microsoft.EntityFrameworkCore
+@using System.ComponentModel.DataAnnotations
+@using System.Text
+@using System.Text.Encodings.Web
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
+@using BlazorApp3.Data
+@inject IUserStore<ApplicationUser> UserStore
+
+@inject IDbContextFactory<BlazorApp3.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@using Microsoft.AspNetCore.Authorization
+@inject UserManager<BlazorApp3.Data.ApplicationUser> UserManager
+
+<PageTitle>Create</PageTitle>
+
+<h1><i class="fa-solid fa-square-plus"></i></h1>
+
+<h1 class="mb-4">Student</h1>
+
+<div class="card">
+    <div class="card-header">
+        <h4>Create New Student</h4>
+    </div>
+    <div class="card-body">
+        <EditForm method="post" Model="Students" OnValidSubmit="AddStudents" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger mb-3" />
+
+            <div class="mb-3">
+                <label for="name" class="form-label">Name:</label>
+                <InputText id="name" @bind-Value="Students.Name" class="form-control" />
+                <ValidationMessage For="() => Students.Name" class="text-danger" />
+            </div>
+
+            <div class="mb-3">
+                <label for="code" class="form-label">Code:</label>
+                <InputText id="code" @bind-Value="Students.Code" class="form-control" />
+                <ValidationMessage For="() => Students.Code" class="text-danger" />
+            </div>
+
+            <div class="mb-3">
+                <label for="email" class="form-label">Email:</label>
+                <InputText id="email" @bind-Value="Students.Email" class="form-control" />
+                <ValidationMessage For="() => Students.Email" class="text-danger" />
+            </div>
+
+            <div class="mb-3">
+                <label for="phone" class="form-label">Phone:</label>
+                <InputText id="phone" @bind-Value="Students.PhoneNumber" class="form-control" />
+                <ValidationMessage For="() => Students.PhoneNumber" class="text-danger" />
+            </div>
+
+            <div class="mb-3">
+                <label for="password" class="form-label">Password:</label>
+                <InputText id="password" @bind-Value="Students.PasswordHash" class="form-control" type="password" />
+                <ValidationMessage For="() => Students.PasswordHash" class="text-danger" />
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <button type="submit" class="btn btn-primary">Create</button>
+                <a href="/students" class="btn btn-secondary">Back to List</a>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+
+
+@code {
+
+    [SupplyParameterFromForm]
+    public BlazorApp3.Data.ApplicationUser Students { get; set; } = new();
+
+    // To protect from overposting attacks, see https://aka.ms/RazorPagesCRUD
+
+    public async Task AddStudents()
+    {
+        var passwordHasher = new Microsoft.AspNetCore.Identity.PasswordHasher<Microsoft.AspNetCore.Identity.IdentityUser>();
+        using var context = DbFactory.CreateDbContext();
+        BlazorApp3.Data.ApplicationUser newStudent = new Data.ApplicationUser()
+        {
+
+            Code = Students.Code,
+            Name = Students.Name,
+            PhoneNumber = Students.PhoneNumber,
+            Email = Students.Email,
+            UserName = Students.Code,
+            NormalizedEmail = Students.Email.ToUpper(),
+            NormalizedUserName = Students.Code.ToUpper(),
+            Role = "Student",
+            LockoutEnabled = true
+        };
+        await UserStore.SetUserNameAsync(newStudent, Students.Email, CancellationToken.None);
+        var emailStore = GetEmailStore();
+        await emailStore.SetEmailAsync(newStudent, Students.Email, CancellationToken.None);
+        await UserManager.CreateAsync(newStudent, Students.PasswordHash);
+
+        NavigationManager.NavigateTo("/students");
+    }
+    private IUserEmailStore<ApplicationUser> GetEmailStore()
+    {
+        if (!UserManager.SupportsUserEmail)
+        {
+            throw new NotSupportedException("The default UI requires a user store with email support.");
+        }
+        return (IUserEmailStore<ApplicationUser>)UserStore;
+    }
+}

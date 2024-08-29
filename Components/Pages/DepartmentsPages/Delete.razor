@@ -1,0 +1,69 @@
+﻿@page "/departments/delete"
+
+@using Microsoft.EntityFrameworkCore
+@using BlazorApp3.Models
+@inject IDbContextFactory<BlazorApp3.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+
+<PageTitle>Delete</PageTitle>
+
+<div class="container mt-4">
+    <h3 class="mb-4">Are you sure you want to delete this?</h3>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h4 class="mb-3">Department Details</h4>
+            <hr />
+
+            @if (departments is null)
+            {
+                <p><em>Loading...</em></p>
+            }
+            else
+            {
+                <dl class="row">
+                    <dt class="col-sm-3">Name:</dt>
+                    <dd class="col-sm-9">@departments.Name</dd>
+                </dl>
+                <div class="mt-4">
+                    <EditForm method="post" Model="departments" OnValidSubmit="DeleteDepartments" FormName="delete" Enhance>
+                        <button type="submit" class="btn btn-danger w-100">
+                            <i class="fa-solid fa-trash"></i> Delete
+                        </button>
+                    </EditForm>
+                    <a href="/departments" class="btn btn-secondary mt-2">
+                        <i class="fa-solid fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+
+@code {
+    Departments? departments;
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        departments = await context.Departments.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (departments is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    public async Task DeleteDepartments()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Departments.Remove(departments!);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/departments");
+    }
+}

@@ -1,0 +1,202 @@
+﻿@page "/courses/grade"
+
+@using Microsoft.EntityFrameworkCore
+@using BlazorApp3.Models
+@inject IDbContextFactory<BlazorApp3.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+<PageTitle>Add Grades</PageTitle>
+
+<h1 class="my-4 text-center text-primary">Add Grades</h1>
+
+@if (showNotification)
+{
+    <div class="alert alert-success alert-dismissible fade show mt-3 text-center" role="alert">
+        Grades and Notes have been successfully saved!
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="container">
+    <hr class="my-4" />
+
+    @if (courses is null)
+    {
+        <div class="text-center">
+            <p><em>Loading...</em></p>
+        </div>
+    }
+    else
+    {
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card border-primary shadow-lg">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">Course Information</h4>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row">
+                            <dt class="col-sm-4 font-weight-bold">Name</dt>
+                            <dd class="col-sm-8">@courses.Name</dd>
+                            <dt class="col-sm-4 font-weight-bold">Start Date</dt>
+                            <dd class="col-sm-8">@courses.StartDate.ToShortDateString()</dd>
+                            <dt class="col-sm-4 font-weight-bold">End Date</dt>
+                            <dd class="col-sm-8">@courses.EndDate.ToShortDateString()</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-success shadow-lg">
+                    <div class="card-header bg-success text-white">
+                        <h4 class="mb-0">Course Details</h4>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row">
+                            <dt class="col-sm-4 font-weight-bold">Semester</dt>
+                            <dd class="col-sm-8">@courses.Semester.Name</dd>
+                            <dt class="col-sm-4 font-weight-bold">Lecture</dt>
+                            <dd class="col-sm-8">@courses.Lecture.Name</dd>
+                            <dt class="col-sm-4 font-weight-bold">Subject</dt>
+                            <dd class="col-sm-8">@courses.Subject.Name</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <hr class="my-4" />
+
+    <h3 class="my-4 text-center text-secondary">List of Students Enrolled</h3>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-bordered table-hover">
+            <thead class="thead-light">
+                <tr>
+                    <th class="text-center">No</th>
+                    <th class="text-center">Code</th>
+                    <th class="text-center">Name</th>
+                    <th class="text-center">Email</th>
+                    <th class="text-center">Grade</th>
+                    <th class="text-center">Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (StudentCourses != null && StudentCourses.Count > 0)
+                {
+                    int i = 1;
+                    @foreach (var student in StudentCourses)
+                    {
+                        <tr>
+                            <td class="text-center">@i</td>
+                            <td class="text-center">@student.Student.Code</td>
+                            <td class="text-center">@student.Student.Name</td>
+                            <td class="text-center">@student.Student.Email</td>
+                            <td class="text-center">
+                                <input type="text" @bind="student.Grade" class="form-control form-control-sm" placeholder="Grade" />
+                            </td>
+                            <td class="text-center">
+                                <input type="text" @bind="student.Note" class="form-control form-control-sm" placeholder="Note" />
+                            </td>
+                        </tr>
+                        i++;
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="6" class="text-center">No data!</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="text-center mt-4">
+        <button class="btn btn-primary btn-lg" @onclick="SaveGradesAndNotes">
+            <i class="fa-solid fa-save"></i> Save Grades and Notes
+        </button>
+    </div>
+</div>
+
+<style>
+    .card-header {
+        border-bottom: 2px solid #ffffff;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: #f1f1f1;
+    }
+
+    .btn-primary {
+        background-color: #0056b3;
+        border-color: #004494;
+    }
+
+        .btn-primary:hover {
+            background-color: #004494;
+            border-color: #003d7a;
+        }
+
+    .alert {
+        border-radius: .25rem;
+    }
+</style>
+
+
+@code {
+    Courses? courses;
+    private bool showNotification = false;
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    public List<StudentCourse> StudentCourses { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        courses = await context.Courses
+            .Include(m => m.Semester)
+            .Include(m => m.Subject)
+            .Include(m => m.Lecture)
+            .FirstOrDefaultAsync(m => m.Id == Id);
+
+        StudentCourses = await context.StudentCourses
+            .Where(course => course.CourseId == Id)
+            .Include(student => student.Student)
+            .ToListAsync();
+
+        if (courses is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    private async Task SaveGradesAndNotes()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        foreach (var studentCourse in StudentCourses)
+        {
+            var existingStudentCourse = await context.StudentCourses
+                .FirstOrDefaultAsync(sc => sc.CourseId == Id && sc.StudentId == studentCourse.StudentId);
+
+            if (existingStudentCourse != null)
+            {
+                existingStudentCourse.Grade = studentCourse.Grade;
+                existingStudentCourse.Note = studentCourse.Note;
+            }
+        }
+
+        await context.SaveChangesAsync();
+        showNotification = true;
+        StateHasChanged();
+
+        // Hide the notification after a delay
+        await Task.Delay(3000);
+        showNotification = false;
+        StateHasChanged();
+    }
+}

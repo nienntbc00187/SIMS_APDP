@@ -1,0 +1,109 @@
+﻿@page "/students/edit"
+
+@using Microsoft.AspNetCore.Identity
+@using BlazorApp3.Data
+@using BlazorApp3.Models
+@using Microsoft.EntityFrameworkCore
+@using System.ComponentModel.DataAnnotations
+
+
+@inject IDbContextFactory<BlazorApp3.Data.ApplicationDbContext> DbFactory
+@inject SignInManager<ApplicationUser> SignInManager
+@inject BlazorApp3.Components.Account.IdentityUserAccessor UserAccessor
+@inject BlazorApp3.Components.Account.IdentityRedirectManager RedirectManager
+@inject NavigationManager NavigationManager
+
+<h3>Edit Student</h3>
+
+@if (Student == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <EditForm Model="Input" OnValidSubmit="OnValidSubmitAsync" FormName="EditStudent">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" />
+
+        <div class="mb-3">
+            <label for="name">Name:</label>
+            <InputText @bind-Value="Input.Name" class="form-control" />
+            <ValidationMessage For="() => Input.Name" />
+        </div>
+
+        <div class="mb-3">
+            <label for="email">Email:</label>
+            <InputText @bind-Value="Input.Email" class="form-control" />
+            <ValidationMessage For="() => Input.Email" />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save</button>
+    </EditForm>
+}
+
+<div>
+    <a href="/students">Back to List</a>
+</div>
+
+@code {
+    private ApplicationUser Student = default!;
+    private string? currentName;
+    private string? currentEmail;
+
+    [SupplyParameterFromQuery]
+    public string Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Student = await context.Users.FindAsync(Id);
+
+        if (Student == null)
+        {
+            return;
+        }
+
+        currentName = Student.Name;
+        currentEmail = Student.Email;
+
+        Input.Name ??= currentName;
+        Input.Email ??= currentEmail;
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        if (Input.Name != currentName)
+        {
+            Student.Name = Input.Name;
+        }
+
+        if (Input.Email != currentEmail)
+        {
+            Student.Email = Input.Email;
+            Student.NormalizedEmail = Input.Email.ToUpper();
+        }
+
+        context.Entry(Student).State = EntityState.Modified;
+
+        await context.SaveChangesAsync();
+
+        await SignInManager.RefreshSignInAsync(Student);
+        NavigationManager.NavigateTo("/students");
+    }
+
+    private sealed class InputModel
+    {
+        [Required]
+        [Display(Name = "Name")]
+        public string? Name { get; set; }
+
+        [EmailAddress]
+        [Display(Name = "Email")]
+        public string? Email { get; set; }
+    }
+}

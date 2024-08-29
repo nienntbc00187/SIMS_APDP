@@ -1,0 +1,208 @@
+﻿@page "/courses/assign"
+
+@using Microsoft.EntityFrameworkCore
+@using BlazorApp3.Models
+@inject IDbContextFactory<BlazorApp3.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+<PageTitle>Assign Student into Course</PageTitle>
+
+<h1 class="my-4 text-center text-primary">Assign Students to Course</h1>
+
+@if (courses is null)
+{
+    <div class="text-center">
+        <p><em>Loading...</em></p>
+    </div>
+}
+else
+{
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col-lg-6">
+                <div class="card border-primary shadow-lg">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">Course Details</h4>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row">
+                            <dt class="col-sm-4 font-weight-bold">Name</dt>
+                            <dd class="col-sm-8">@courses.Name</dd>
+                            <dt class="col-sm-4 font-weight-bold">Start Date</dt>
+                            <dd class="col-sm-8">@courses.StartDate.ToShortDateString()</dd>
+                            <dt class="col-sm-4 font-weight-bold">End Date</dt>
+                            <dd class="col-sm-8">@courses.EndDate.ToShortDateString()</dd>
+                            <dt class="col-sm-4 font-weight-bold">Semester</dt>
+                            <dd class="col-sm-8">@courses.Semester.Name</dd>
+                            <dt class="col-sm-4 font-weight-bold">Lecture</dt>
+                            <dd class="col-sm-8">@courses.Lecture.Name</dd>
+                            <dt class="col-sm-4 font-weight-bold">Subject</dt>
+                            <dd class="col-sm-8">@courses.Subject.Name</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card border-success shadow-lg">
+                    <div class="card-header bg-success text-white">
+                        <h4 class="mb-0">Enroll Students</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group mb-4">
+                            <label for="studentSelect" class="font-weight-bold">Select Students</label>
+                            <select id="studentSelect" multiple class="form-control form-control-lg">
+                                <!-- Options should be populated dynamically -->
+                            </select>
+                        </div>
+                        <button class="btn btn-primary w-100 py-2" @onclick="EnrollStudents">
+                            <i class="fa-solid fa-user-plus"></i> Enroll
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="my-4" />
+
+        <h3 class="my-4 text-center text-secondary">Enrolled Students</h3>
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <thead class="thead-light">
+                    <tr>
+                        <th class="text-center">No</th>
+                        <th class="text-center">Code</th>
+                        <th class="text-center">Name</th>
+                        <th class="text-center">Email</th>
+                        <th class="text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (StudentCourses != null && StudentCourses.Count > 0)
+                    {
+                        int i = 1;
+                        @foreach (StudentCourse student in StudentCourses)
+                        {
+                            <tr>
+                                <td class="text-center">@i</td>
+                                <td class="text-center">@student.Student.Code</td>
+                                <td class="text-center">@student.Student.Name</td>
+                                <td class="text-center">@student.Student.Email</td>
+                                <td class="text-center">
+                                    <button class="btn btn-danger btn-sm" @onclick="() => RemoveStudent(student.StudentId)">
+                                        <i class="fa-solid fa-trash"></i> Remove
+                                    </button>
+                                </td>
+                            </tr>
+                            i++;
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center">No data!</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+
+
+
+
+@code {
+    Courses? courses;
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    public List<StudentCourse> StudentCourses { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        courses = await context.Courses
+            .Include(m => m.Semester)
+            .Include(m => m.Subject)
+            .Include(m => m.Lecture)
+            .FirstOrDefaultAsync(m => m.Id == Id);
+
+        StudentCourses = await context.StudentCourses
+    .Where(course => course.CourseId == Id)
+    .Include(student => student.Student)
+    .ToListAsync();
+
+        if (courses is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+               await Task.Delay(500);
+        await JS.InvokeVoidAsync("initializeSelect2", Id);
+        }
+    }
+    private async Task EnrollStudents()
+    {
+        var selectedStudentIds = await JS.InvokeAsync<string[]>("getSelectedValues", "studentSelect");
+
+        if (selectedStudentIds != null && selectedStudentIds.Length > 0)
+        {
+            using var context = DbFactory.CreateDbContext();
+
+            foreach (var studentId in selectedStudentIds)
+            {
+                var studentCourse = new StudentCourse
+                {
+                    CourseId = Id,
+                    StudentId = studentId,
+                    Grade = null // or set a default grade
+                };
+
+                context.StudentCourses.Add(studentCourse);
+            }
+
+            await context.SaveChangesAsync();
+
+            // Reload the students list
+            StudentCourses = await context.StudentCourses
+                .Where(course => course.CourseId == Id)
+                .Include(student => student.Student)
+                .ToListAsync();
+            await JS.InvokeVoidAsync("clearSelect2", "studentSelect");
+
+            StateHasChanged(); // Refresh the UI
+        }
+    }
+    private async Task RemoveStudent(string studentId)
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        var studentCourse = await context.StudentCourses
+            .Where(sc => sc.StudentId == studentId && sc.CourseId == Id)
+            .FirstOrDefaultAsync();
+
+        if (studentCourse != null)
+        {
+            context.StudentCourses.Remove(studentCourse);
+            await context.SaveChangesAsync();
+
+            // Reload the students list
+            StudentCourses = await context.StudentCourses
+                .Where(course => course.CourseId == Id)
+                .Include(student => student.Student)
+                .ToListAsync();
+
+            StateHasChanged(); // Refresh the UI
+        }
+    }
+
+}

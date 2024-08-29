@@ -1,0 +1,56 @@
+﻿@page "/departments/details"
+
+@using Microsoft.EntityFrameworkCore
+@using BlazorApp3.Models
+@inject IDbContextFactory<BlazorApp3.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Details</PageTitle>
+
+<div class="container mt-4">
+    <h4 class="mb-4">Department Details</h4>
+    <hr />
+
+    @if (departments is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-3">Name:</dt>
+                    <dd class="col-sm-9">@departments.Name</dd>
+                </dl>
+                <div class="mt-4">
+                    <a href="@($"/departments/edit?id={departments.Id}")" class="btn btn-warning">
+                        <i class="fa-solid fa-pen-to-square"></i> Edit
+                    </a>
+                    <a href="@($"/departments")" class="btn btn-secondary">
+                        <i class="fa-solid fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+
+@code {
+    Departments? departments;
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        departments = await context.Departments.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (departments is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+}
